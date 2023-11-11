@@ -1,0 +1,36 @@
+#!/usr/bin/env bash
+
+set -e
+
+MCU=attiny85
+
+PROG="-c usbasp"
+
+EFUSE=0xFF
+
+# SPIEN=1
+HFUSE=0xDF
+
+# CKDIV8=1, SUT=01, CKSEL=0010
+LFUSE=0x62
+
+CFLAGS="-std=c99 -Werror -Wall -Wextra -Wno-unused-parameter"
+AVRFLAGS="-DF_CPU=1000000ul -mmcu=$MCU -Os -flto"
+
+# pip install cogapp
+
+cog -e -r lampmoj.c
+
+avr-gcc $CFLAGS $AVRFLAGS -o lampmoj.elf lampmoj.c
+avr-objcopy -j .text -j .data -O ihex lampmoj.elf lampmoj.hex
+avr-size -C --mcu=$MCU lampmoj.elf | tee lampmoj.size
+
+if [[ $1 != --flash ]]
+then
+    exit 0
+fi
+
+avrdude -p $MCU $PROG -U efuse:w:$EFUSE:m
+avrdude -p $MCU $PROG -U hfuse:w:$HFUSE:m
+avrdude -p $MCU $PROG -U lfuse:w:$LFUSE:m
+avrdude -p $MCU $PROG -U flash:w:lampmoj.hex:i
