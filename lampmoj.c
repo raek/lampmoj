@@ -1,4 +1,5 @@
 #include <stdint.h>
+#include <stdbool.h>
 
 #include <avr/io.h>
 #include <util/delay.h>
@@ -7,9 +8,14 @@
 #define LED_MAX 63
 #define COLOR_CYCLE_LENGTH ((LED_MAX+1) * 6)
 
+// PIN ALLOCATION
+//
 // Red   LED: PB0, PWM'ed by OC0A, active low
 // Green LED: PB1, PWM'ed by OC0B, active low
 // Blue  LED: PB4, PWM'ed by OC1B, active low
+//
+// White/color switch: PB2, input, pullup enabled
+// Run/stop switch:    PB3, input, pullup enabled
 
 uint8_t intensity_lut[64] = {
 /*[[[cog
@@ -142,13 +148,37 @@ void color_cycle(uint16_t t)
     }
 }
 
+void setup_switches(void)
+{
+    // Set switch pins to inputs (also the default)
+    DDRB &= ~((1<<2) | (1<<3));
+    // Enable pull-ups for switch pins
+    PORTB |= (1<<2) | (1<<3);
+}
+
+bool get_color_cycle_mode_enabled(void)
+{
+    return (PINB & (1<<2)) != 0;
+}
+
 int main(int argc, char **argv)
 {
+    uint16_t t = 0;
+
     setup_leds();
+    setup_switches();
     for (;;) {
-	for (uint16_t t = 0; t < COLOR_CYCLE_LENGTH; t++) {
+	if (get_color_cycle_mode_enabled()) {
+	    // Cycle colors
 	    color_cycle(t);
 	    _delay_ms(T);
+	    t++;
+	    if (t >= COLOR_CYCLE_LENGTH) {
+		t = 0;
+	    }
+	} else {
+	    // Constantly white
+	    set_leds(LED_MAX, LED_MAX, LED_MAX);
 	}
     }
 }
