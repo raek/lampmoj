@@ -5,6 +5,7 @@
 
 #define T 100
 #define LED_MAX 63
+#define COLOR_CYCLE_LENGTH ((LED_MAX+1) * 6)
 
 // Red   LED: PB0, PWM'ed by OC0A, active low
 // Green LED: PB1, PWM'ed by OC0B, active low
@@ -113,39 +114,40 @@ void set_leds(uint8_t r, uint8_t g, uint8_t b)
     OCR1B = intensity_lut[b];
 }
 
+void color_cycle(uint16_t t)
+{
+    uint8_t part = t / (LED_MAX+1);
+    uint8_t phase = t % (LED_MAX+1);
+
+    if (part == 0) {
+	// Green up
+	set_leds(LED_MAX, phase, 0);
+    } else if (part == 1) {
+	// Red down
+	set_leds(LED_MAX-phase, LED_MAX, 0);
+    } else if (part == 2) {
+	// Blue up
+	set_leds(0, LED_MAX, phase);
+    } else if (part == 3) {
+	// Green down
+	set_leds(0, LED_MAX-phase, LED_MAX);
+    } else if (part == 4) {
+	// Red up
+	set_leds(phase, 0, LED_MAX);
+    } else if (part == 5) {
+	// Blue down
+	set_leds(LED_MAX, 0, LED_MAX-phase);
+    } else {
+	set_leds(0, 0, 0);
+    }
+}
+
 int main(int argc, char **argv)
 {
     setup_leds();
-    set_leds(LED_MAX, 0, 0);
     for (;;) {
-	// Green up
-	for (uint8_t i = 0; i < LED_MAX; i++) {
-	    set_leds(LED_MAX, i, 0);
-	    _delay_ms(T);
-	}
-	// Red down
-	for (uint8_t i = LED_MAX-1; i > 0; i--) {
-	    set_leds(i, LED_MAX, 0);
-	    _delay_ms(T);
-	}
-	// Blue up
-	for (uint8_t i = 0; i < LED_MAX; i++) {
-	    set_leds(0, LED_MAX, i);
-	    _delay_ms(T);
-	}
-	// Green down
-	for (uint8_t i = LED_MAX-1; i > 0; i--) {
-	    set_leds(0, i, LED_MAX);
-	    _delay_ms(T);
-	}
-	// Red up
-	for (uint8_t i = 0; i < LED_MAX; i++) {
-	    set_leds(i, 0, LED_MAX);
-	    _delay_ms(T);
-	}
-	// Blue down
-	for (uint8_t i = LED_MAX-1; i > 0; i--) {
-	    set_leds(LED_MAX, 0, i);
+	for (uint16_t t = 0; t < COLOR_CYCLE_LENGTH; t++) {
+	    color_cycle(t);
 	    _delay_ms(T);
 	}
     }
