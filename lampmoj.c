@@ -5,6 +5,7 @@
 #include <util/delay.h>
 
 #define T 100
+#define BLINK_T 333
 #define LED_MAX 63
 #define COLOR_CYCLE_LENGTH ((LED_MAX+1) * 6)
 
@@ -161,24 +162,45 @@ bool get_color_cycle_mode_enabled(void)
     return (PINB & (1<<2)) != 0;
 }
 
+bool get_running_enabled(void)
+{
+    return (PINB & (1<<3)) != 0;
+}
+
 int main(int argc, char **argv)
 {
-    uint16_t t = 0;
-
     setup_leds();
     setup_switches();
+    uint16_t t = 0;
+    bool running = get_running_enabled();
     for (;;) {
 	if (get_color_cycle_mode_enabled()) {
+	    bool new_running = get_running_enabled();
+	    if (running != new_running) {
+		set_leds(0, 0, 0);
+		_delay_ms(BLINK_T);
+		if (new_running) {
+		    set_leds(0, LED_MAX, 0);
+		} else {
+		    set_leds(LED_MAX, 0, 0);
+		}
+		_delay_ms(BLINK_T);
+		set_leds(0, 0, 0);
+		_delay_ms(BLINK_T);
+		running = new_running;
+	    }
 	    // Cycle colors
 	    color_cycle(t);
-	    _delay_ms(T);
-	    t++;
-	    if (t >= COLOR_CYCLE_LENGTH) {
-		t = 0;
+	    if (running) {
+		t++;
+		if (t >= COLOR_CYCLE_LENGTH) {
+		    t = 0;
+		}
 	    }
 	} else {
 	    // Constantly white
 	    set_leds(LED_MAX, LED_MAX, LED_MAX);
 	}
+	_delay_ms(T);
     }
 }
