@@ -2,6 +2,7 @@
 #include <stdbool.h>
 
 #include <avr/io.h>
+#include <avr/eeprom.h>
 #include <util/delay.h>
 
 #define T 100
@@ -93,6 +94,8 @@ cog.outl("    0");
 //[[[end]]]
 };
 
+uint16_t EEMEM state = 0;
+
 void setup_leds(void)
 {
     // Set LED pins to outputs
@@ -167,11 +170,24 @@ bool get_running_enabled(void)
     return (PINB & (1<<3)) != 0;
 }
 
+uint16_t get_stored_state(void)
+{
+    return eeprom_read_word(&state);
+}
+
+void set_stored_state(uint16_t new_state)
+{
+    return eeprom_write_word(&state, new_state);
+}
+
 int main(int argc, char **argv)
 {
     setup_leds();
     setup_switches();
-    uint16_t t = 0;
+    uint16_t t = get_stored_state();
+    if (t >= COLOR_CYCLE_LENGTH) {
+	t = 0;
+    }
     bool running = get_running_enabled();
     for (;;) {
 	if (get_color_cycle_mode_enabled()) {
@@ -183,6 +199,7 @@ int main(int argc, char **argv)
 		    set_leds(0, LED_MAX, 0);
 		} else {
 		    set_leds(LED_MAX, 0, 0);
+		    set_stored_state(t);
 		}
 		_delay_ms(BLINK_T);
 		set_leds(0, 0, 0);
